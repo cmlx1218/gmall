@@ -1,0 +1,9 @@
+server:
+  port: 10126
+
+spring:
+  kafka:
+    bootstrap-servers: master:6667,slave1:6667,slave2:6667
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
