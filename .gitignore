@@ -2,3 +2,6 @@
 /gmall-realtime/target/
 /gmall-logger/.mvn/
 /gmall-logger/.mvn/wrapper/
+/gmall-parent.iml
+/gmall-common/target/
+/gmall-mock/target/

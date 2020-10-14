@@ -64,6 +64,8 @@
 <!--dependencyManagement 不引入包只是管理版本号依赖，在子模块中引入依赖的时候就不需要写版本信息了-->
     <dependencyManagement>
         <dependencies>
+
+
             <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
             <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
