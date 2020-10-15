@@ -1,4 +1,4 @@
-package com.cmlx.gmall.common.constant;
+package com.cmlx.publisher.common;
 
 /**
  * @Author: CMLX

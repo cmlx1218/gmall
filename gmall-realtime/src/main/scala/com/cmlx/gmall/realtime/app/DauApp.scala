@@ -6,6 +6,7 @@ import java.util.Date
 
 import com.alibaba.fastjson.JSON
 import com.cmlx.gmall.common.constant.GmallConstant
+import com.cmlx.gmall.common.util.MyEsUtil
 import com.cmlx.gmall.realtime.bean.StartUpLog
 import com.cmlx.gmall.realtime.utils.{KafkaUtil, RedisUtil}
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -88,10 +89,10 @@ object DauApp {
     }
 
 
-
     // 保存到redis中
     distinctDStream.foreachRDD { rdd: RDD[StartUpLog] => //driver中执行,可能在不同服务器执行
 
+      // startUpLogItr是一个迭代器,只能使用一次,使用只有就变空了。所以需要将其转换为List在循环操作
       rdd.foreachPartition { startUpLogItr: Iterator[StartUpLog] => //在executor中执行，但是这里用的Partition就可以减少获取jedisClient和关闭的次数
         val jedisClient: Jedis = RedisUtil.getJedisClient
         val list: List[StartUpLog] = startUpLogItr.toList
@@ -100,6 +101,9 @@ object DauApp {
           val value: String = startUpLog.mid
           jedisClient.sadd(key, value)
         }
+
+        //保存到es
+        MyEsUtil.indexBulk(GmallConstant.ES_INDEX_DAU,list)
         jedisClient.close()
       }
 
