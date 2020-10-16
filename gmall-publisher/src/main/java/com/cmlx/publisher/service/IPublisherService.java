@@ -1,6 +1,7 @@
 package com.cmlx.publisher.service;
 
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * @Author: CMLX
@@ -15,6 +16,8 @@ public interface IPublisherService {
      * @return
      */
     Long getDauTotal(String date) throws IOException;
+
+    Map getDauHourMap(String date) throws IOException;
 
 
 
