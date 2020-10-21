@@ -6,9 +6,7 @@ import io.searchbox.client.JestClient;
 import io.searchbox.core.Search;
 import io.searchbox.core.SearchResult;
 import io.searchbox.core.search.aggregation.TermsAggregation;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.TermQueryBuilder;
+import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
@@ -17,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -91,5 +90,78 @@ public class PublisherServiceImpl implements IPublisherService {
             dauHourMap.put(key, count);
         }
         return dauHourMap;
+    }
+
+    @Override
+    public Double getOrderAmount(String date) throws IOException {
+        String query = new SearchSourceBuilder()
+                .query(new BoolQueryBuilder().filter(new TermQueryBuilder("createHour", date)))
+                .aggregation(AggregationBuilders.sum("sum_totalAmount").field("totalAmount"))
+                .toString();
+        Search search = new Search.Builder(query).addIndex(GmallConstant.ES_INDEX_DAU).addType("_doc").build();
+        SearchResult searchResult = jestClient.execute(search);
+        Double sum_totalAmount = searchResult.getAggregations().getSumAggregation("sum_totalAmount").getSum();
+        return sum_totalAmount;
+    }
+
+    @Override
+    public Map getOrderAmountHourMap(String date) throws IOException {
+        String query = new SearchSourceBuilder()
+                .query(new BoolQueryBuilder().filter(new TermQueryBuilder("createHour", date)))
+                .aggregation(AggregationBuilders.terms("groupby_dateHour").field("dateHour").size(24)
+                        .subAggregation(AggregationBuilders.sum("sum_totalAmount").field("totalAmount")))
+                .toString();
+
+        Search search = new Search.Builder(query).addIndex(GmallConstant.ES_INDEX_ORDER).addType("_doc").build();
+
+        Map<String, Double> hourMap = new HashMap<>();
+        SearchResult searchResult = jestClient.execute(search);
+        List<TermsAggregation.Entry> groupby_dateHour = searchResult.getAggregations().getTermsAggregation("groupby_dateHour").getBuckets();
+        for (TermsAggregation.Entry entry : groupby_dateHour) {
+            String key = entry.getKey();
+            Double value = entry.getSumAggregation("sum_totalAmount").getSum();
+            hourMap.put(key, value);
+        }
+        return hourMap;
+    }
+
+    @Override
+    public Map getSaleDetailMap(String date, String keyword, Integer pageNum, Integer pageSize, String aggsFieldName, Integer aggsSize) throws IOException {
+
+        Long total = 0L;
+        List detailList = new ArrayList();
+        Map<String, Long> aggsMap = new HashMap<>();
+        Map saleMap = new HashMap();
+        String query = new SearchSourceBuilder()
+                .query(new BoolQueryBuilder().filter(new TermQueryBuilder("createHour", date))
+                        .must(new MatchQueryBuilder("sku_name", keyword).operator(Operator.AND)))
+                .aggregation(AggregationBuilders.terms("groupby_" + aggsFieldName).field(aggsFieldName).size(aggsSize))
+                .from((pageNum - 1) * pageSize)
+                .size(pageSize)
+                .toString();
+
+        Search search = new Search.Builder(query).addIndex(GmallConstant.ES_INDEX_SALE_DETAIL).addType("_doc").build();
+        SearchResult searchResult = jestClient.execute(search);
+        total = searchResult.getTotal();
+
+        // 取明细
+        List<SearchResult.Hit<Map, Void>> hits = searchResult.getHits(Map.class);
+        for (SearchResult.Hit<Map, Void> hit : hits) {
+            detailList.add(hit.source);
+        }
+
+        // 取聚合结果
+        List<TermsAggregation.Entry> groupby_user_gender = searchResult.getAggregations().getTermsAggregation("groupby_" + aggsFieldName).getBuckets();
+        for (TermsAggregation.Entry entry : groupby_user_gender) {
+            String key = entry.getKey();
+            Long value = entry.getCount();
+            aggsMap.put(key, value);
+        }
+
+        // 返回结果
+        saleMap.put("total", total);
+        saleMap.put("detailList", detailList);
+        saleMap.put("aggsMap", aggsMap);
+        return saleMap;
     }
 }

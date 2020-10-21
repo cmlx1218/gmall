@@ -19,7 +19,7 @@ import redis.clients.jedis.Jedis
 
 /**
  * @Author: CMLX
- * @Description:
+ * @Description: 日活相关
  * @Date: create in 2020/10/13 15:04
  */
 object DauApp {
